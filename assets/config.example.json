@@ -1,0 +1,12 @@
+{
+  "google_ai_api_key": "YOUR_GOOGLE_AI_API_KEY_HERE",
+  "google_service_account_path": "./service-account.json",
+  "default_sheet_id": "YOUR_GOOGLE_SHEET_ID_HERE",
+  "default_worksheet": "Content Calendar",
+  "image_output_dir": "./outputs",
+  "notes": {
+    "google_ai_api_key": "Get from https://aistudio.google.com/apikey — used for NanoBanana (Gemini 2.5 Flash Image)",
+    "google_service_account_path": "Path to your Google service account JSON file. Create at https://console.cloud.google.com/iam-admin/serviceaccounts. Enable Sheets API + Drive API. Share your target sheet with the service account email.",
+    "default_sheet_id": "The ID from your Google Sheet URL: https://docs.google.com/spreadsheets/d/{THIS_PART}/edit"
+  }
+}
