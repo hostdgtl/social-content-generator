@@ -1,21 +1,21 @@
 # Social Content Generator
 
-A Claude Code skill that creates publish-ready organic social media content for any brand. Writes copy in the client's brand voice, generates images via NanoBanana (Gemini 2.5 Flash Image API), and pushes both to a Google Sheet for scheduling.
+A Claude Code skill that creates publish-ready organic social media content for any brand. Writes copy in the client's brand voice, generates detailed image prompts for Gemini, and pushes content to a Google Sheet for scheduling.
 
 ## What It Does
 
 1. **Loads a brand voice** — Pulls the client's stored voice profile so every post sounds on-brand
 2. **Plans a content calendar** — Selects content pillars, balances sell vs. connect, maps a campaign arc
 3. **Writes captions** — Hook-first, phone-formatted, platform-aware copy with CTAs and hashtags
-4. **Generates images** — AI-generated social graphics via Gemini 2.5 Flash Image (NanoBanana)
-5. **Pushes to Google Sheets** — Populates a scheduling sheet with copy, image links, and metadata
+4. **Generates image prompts** — Detailed, copy-paste-ready prompts for [Gemini](https://gemini.google.com/app)
+5. **Pushes to Google Sheets** — Populates a scheduling sheet with copy, prompts, and metadata
 
 ## Requirements
 
 - [Claude Code](https://claude.ai/claude-code) (this is a Claude Code skill)
-- Python 3.8+
-- Google AI API key (for NanoBanana image generation)
-- Google service account JSON (for Sheets API)
+- [Gemini](https://gemini.google.com/app) (free — for generating images from prompts)
+- Python 3.8+ (optional, for Google Sheets push)
+- Google service account JSON (optional, for Sheets API)
 
 ## Setup
 
@@ -23,14 +23,13 @@ A Claude Code skill that creates publish-ready organic social media content for 
 bash scripts/setup.sh
 ```
 
-This installs `google-genai`, `gspread`, `Pillow`, and `google-auth`. Then copy the config:
+This installs `gspread` and `google-auth` for the Sheets push script. Then copy the config:
 
 ```bash
 cp assets/config.example.json config.json
 ```
 
 Fill in:
-- `google_ai_api_key` — Get one at [Google AI Studio](https://aistudio.google.com/apikey)
 - `google_service_account_path` — Path to your service account JSON ([create one here](https://console.cloud.google.com/iam-admin/serviceaccounts))
 - `default_sheet_id` — The ID from your Google Sheet URL
 
@@ -47,36 +46,24 @@ Trigger with natural language:
 
 Or use the slash command: `/social-content`
 
-### Scripts (standalone)
+### Image Generation
 
-#### Generate an Image
+This skill generates detailed image prompts instead of calling an API directly. To create images:
 
-```bash
-python scripts/generate_image.py \
-  --prompt "Flat lay of handcrafted soaps on linen, soft morning light, minimal" \
-  --aspect-ratio "1:1" \
-  --output "outputs/post-01.png"
-```
+1. The skill outputs copy-paste-ready prompts for each post
+2. Open https://gemini.google.com/app
+3. Paste the prompt and generate the image
+4. Download and save to `outputs/post-[n].png`
 
-#### Push to Google Sheets
+> **Note:** The `scripts/generate_image.py` script is included for users who have Google AI API credits. It calls the Gemini 2.5 Flash Image API directly. Most users should use the manual Gemini web app workflow above.
+
+### Push to Google Sheets
 
 ```bash
 python scripts/push_to_sheets.py \
   --sheet-id "1abc123..." \
   --data "outputs/content.json"
 ```
-
-### Script Arguments
-
-#### generate_image.py
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `--prompt` | Yes | Image generation prompt |
-| `--aspect-ratio` | No | Aspect ratio (1:1, 4:5, 9:16, 16:9, etc. Default: 1:1) |
-| `--output` | No | Output file path (default: outputs/generated.png) |
-| `--api-key` | No | Google AI API key (or set GOOGLE_API_KEY env var) |
-| `--config` | No | Path to config.json |
 
 #### push_to_sheets.py
 
@@ -112,8 +99,8 @@ Each post is saved to `outputs/content.json`:
   "caption": "Full caption text...",
   "cta": "Discover more via the link in bio",
   "hashtags": "#BrandName #Hashtag",
-  "image_prompt": "Full NanoBanana prompt...",
-  "image_file": "outputs/post-01.png",
+  "image_prompt": "Full detailed image prompt...",
+  "image_file": "",
   "status": "Ready for Review"
 }
 ```
@@ -123,8 +110,9 @@ Each post is saved to `outputs/content.json`:
 - Requires the [brand-voice](https://github.com/hostdgtl/brand-voice) skill loaded first for voice consistency
 - Content pillars are balanced: no same pillar twice in a row, 30-40% sell / 60-70% connect
 - Copy is written hook-first, one idea per post, phone-formatted
-- Images are generated with brand-specific prompts (colours, textures, mood from client profile)
-- Google Sheet columns: Date, Platform, Pillar, Format, Caption, CTA, Hashtags, Image File, Image Prompt, Status
+- Image prompts include brand-specific details (colours, textures, mood from client profile)
+- User generates images manually via [Gemini web app](https://gemini.google.com/app)
+- Google Sheet columns: Date, Platform, Pillar, Format, Caption, CTA, Hashtags, Image Prompt, Image File, Status
 
 ## License
 

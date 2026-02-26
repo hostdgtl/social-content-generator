@@ -1,11 +1,11 @@
 ---
 name: social-content-generator
-description: Agent that creates publish-ready organic social media content for any brand. Writes copy in the client's brand voice, generates images via NanoBanana (Gemini 2.5 Flash Image API), and pushes both to a Google Sheet for scheduling. Runs in Claude Code with executable scripts. Use this agent whenever the user asks to draft social posts, create a content calendar, generate social graphics, or produce any social media content. Triggers include "draft social", "/draft-social", "social content", "content calendar", "generate a post", or any social media content request. Loads the brand-voice skill first, then executes the pipeline.
+description: Agent that creates publish-ready organic social media content for any brand. Writes copy in the client's brand voice, generates detailed image prompts for Gemini, and pushes content to a Google Sheet for scheduling. Runs in Claude Code. Use this agent whenever the user asks to draft social posts, create a content calendar, generate social graphics, or produce any social media content. Triggers include "draft social", "/draft-social", "social content", "content calendar", "generate a post", or any social media content request. Loads the brand-voice skill first, then executes the pipeline.
 ---
 
 # Social Content Generator — Agent
 
-Produces publish-ready organic social media content: copy + AI-generated image + Google Sheet output.
+Produces publish-ready organic social media content: copy + image prompts + Google Sheet output.
 
 ## Architecture
 
@@ -14,7 +14,7 @@ social-content-generator/
 ├── SKILL.md                          ← You are here (orchestration)
 ├── scripts/
 │   ├── setup.sh                      ← One-time dependency install
-│   ├── generate_image.py             ← NanoBanana (Gemini) image generation
+│   ├── generate_image.py             ← Optional: NanoBanana (Gemini) image generation (requires API credits)
 │   └── push_to_sheets.py            ← Google Sheets API push
 └── assets/
     └── config.example.json           ← API key + sheet config template
@@ -24,9 +24,9 @@ social-content-generator/
 
 Before first run, execute `scripts/setup.sh` to install dependencies. The user needs:
 
-1. **Google AI API key** — For NanoBanana (Gemini 2.5 Flash Image). Get one at https://aistudio.google.com/apikey
-2. **Google Sheets API credentials** — A service account JSON key with Sheets API enabled. The target sheet must be shared with the service account email.
-3. **Config file** — Copy `assets/config.example.json` to `config.json` in the project root and fill in the values.
+1. **Google Sheets API credentials** — A service account JSON key with Sheets API enabled. The target sheet must be shared with the service account email.
+2. **Config file** — Copy `assets/config.example.json` to `config.json` in the project root and fill in the values.
+3. **Gemini web app access** — For image generation, open https://gemini.google.com/app and paste the prompts generated in Step 5.
 
 Run setup:
 ```bash
@@ -118,15 +118,15 @@ CTA:
 HASHTAGS:
 ```
 
-Present all copy to the user for approval before generating images.
+Present all copy to the user for approval before generating image prompts.
 
-### Step 5 — Generate Images
+### Step 5 — Generate Image Prompts
 
-Once copy is approved, generate an image for each post using the `generate_image.py` script.
+Once copy is approved, build a detailed image prompt for each post. The user will paste these into [Gemini](https://gemini.google.com/app) to generate the images manually.
 
 **5a. Build the prompt.**
 
-For each post, construct a NanoBanana prompt with these elements:
+For each post, construct a prompt with these elements:
 
 | Element | Source |
 |---------|--------|
@@ -134,57 +134,52 @@ For each post, construct a NanoBanana prompt with these elements:
 | **Style / mood** | Photography style, lighting, colour temperature — from client profile or brief |
 | **Brand elements** | Colours, textures, materials that reflect the brand — from client profile |
 | **Composition** | Framing, angle, negative space — match the platform format |
-| **Technical** | Aspect ratio from platform dimensions table below |
+| **Technical** | Aspect ratio and dimensions from platform table below |
+| **Negative constraints** | What to avoid: no text overlays (unless specified), no watermarks, no logos |
 
 **Platform dimensions:**
 
-| Platform | Format | Aspect Ratio |
-|----------|--------|--------------|
-| Instagram feed (square) | 1080×1080 | 1:1 |
-| Instagram feed (portrait) | 1080×1350 | 4:5 |
-| Instagram Story / Reel | 1080×1920 | 9:16 |
-| Facebook feed | 1200×630 | 16:9 |
-| LinkedIn feed | 1200×627 | 16:9 |
-| X post | 1600×900 | 16:9 |
+| Platform | Format | Aspect Ratio | Dimensions |
+|----------|--------|--------------|------------|
+| Instagram feed (square) | 1080×1080 | 1:1 | 1080×1080 |
+| Instagram feed (portrait) | 1080×1350 | 4:5 | 1080×1350 |
+| Instagram Story / Reel | 1080×1920 | 9:16 | 1080×1920 |
+| Facebook feed | 1200×630 | 16:9 | 1200×630 |
+| LinkedIn feed | 1200×627 | 16:9 | 1200×627 |
+| X post | 1600×900 | 16:9 | 1600×900 |
 
-**5b. Run the script.**
+**5b. Present prompts to the user.**
 
-```bash
-python scripts/generate_image.py \
-  --prompt "Your detailed NanoBanana prompt here" \
-  --aspect-ratio "1:1" \
-  --output "outputs/post-01.png"
+Output each prompt in a copy-paste-ready block:
+
+```
+IMAGE PROMPT — Post [n] ([Platform])
+Aspect ratio: [ratio] ([dimensions])
+─────────────────────────────────────
+[Full detailed prompt here]
 ```
 
-The script calls the Gemini 2.5 Flash Image API and saves the image locally.
+**5c. User generates images manually.**
 
-**5c. Review the output.**
-
-Check each image for:
-- Brand consistency (matches client visual identity)
-- Quality (sharp, professional, no obvious AI artifacts)
-- Caption alignment (visual and copy tell the same story)
-- Platform fit (correct dimensions)
-
-If it misses, refine the prompt and regenerate. Common fixes:
-- Too generic → add specific brand details from client profile
-- Wrong mood → adjust lighting/colour descriptors
-- Cluttered → add "minimal composition, clean negative space"
-- AI artifacts → add "photorealistic, professional product photography"
+Instruct the user to:
+1. Open https://gemini.google.com/app
+2. Paste each prompt
+3. Download the generated image
+4. Save to `outputs/post-[n].png`
 
 **5d. Text overlay (if needed).**
 
-NanoBanana supports text rendering. For promo posts needing text on image:
+For promo posts needing text on image, include the text in the prompt:
 - Keep text minimal (headline + one line max)
 - Specify exact text in the prompt
 - Include font style guidance
 - Ensure contrast
 
-**Output:** Generated `.png` files in `outputs/` directory.
+**Output:** Copy-paste-ready image prompts for each post.
 
 ### Step 6 — Push to Google Sheet
 
-Once copy and images are approved, push everything to the scheduling sheet.
+Once copy and images are ready, push everything to the scheduling sheet.
 
 ```bash
 python scripts/push_to_sheets.py \
@@ -195,10 +190,10 @@ python scripts/push_to_sheets.py \
 The script reads the structured content JSON and pushes to the sheet with this column structure:
 
 ```
-| Date | Platform | Pillar | Format | Caption | CTA | Hashtags | Image File | Image Prompt | Status |
+| Date | Platform | Pillar | Format | Caption | CTA | Hashtags | Image Prompt | Image File | Status |
 ```
 
-**Image handling:** The script uploads the generated image to Google Drive and inserts a shareable link in the sheet. If Drive upload isn't configured, it inserts the local file path.
+**Image handling:** The Image File column is left blank or filled by the user after generating images in Gemini. The Image Prompt column contains the full prompt for reference.
 
 **Output:** Populated Google Sheet ready for scheduling.
 
@@ -218,8 +213,8 @@ The full output per post (saved to `outputs/content.json`):
   "caption": "Full caption text...",
   "cta": "Discover more via the link in bio",
   "hashtags": "#BrandName #Hashtag",
-  "image_prompt": "Full NanoBanana prompt...",
-  "image_file": "outputs/post-01.png",
+  "image_prompt": "Full detailed image prompt...",
+  "image_file": "",
   "status": "Ready for Review"
 }
 ```
@@ -232,8 +227,8 @@ When reviewing existing posts:
 
 1. Load client brand voice.
 2. Assess caption against voice + quality checklist.
-3. Assess image against brand visual identity.
-4. Rewrite and/or regenerate with reasoning.
+3. Assess image prompt against brand visual identity.
+4. Rewrite and/or regenerate prompts with reasoning.
 
 ---
 
@@ -247,6 +242,6 @@ Every post must pass before delivery:
 4. **Calendar balance** — Pillars varied? Sell/connect ratio healthy?
 5. **CTA tone** — Invitation, not demand?
 6. **Platform fit** — Length, format, tone right for the channel?
-7. **Image quality** — Professional and on-brand?
-8. **Image-copy alignment** — Visual and caption tell the same story?
+7. **Image prompt quality** — Detailed, specific, and on-brand?
+8. **Image-copy alignment** — Prompt and caption tell the same story?
 9. **Client checklist** — Passes the client's own quality checks?
